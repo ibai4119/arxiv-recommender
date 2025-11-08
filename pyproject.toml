@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "arxiv-recommender"
+version = "0.1.0"
+description = "Scientific article recommender powered by arXiv metadata."
+authors = ["Ibai"]
+readme = "README.md"
+packages = [{ include = "arxiv_rec", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "*"
+numpy = "*"
+sentence-transformers = "*"
+faiss-cpu = "*"
+fastapi = "*"
+uvicorn = "*"
+scikit-learn = "*"
+pyarrow = "*"
+requests = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+black = "*"
+isort = "*"
+flake8 = "*"
+pre-commit = "*"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203"]
+
+[build-system]
+requires = ["poetry-core>=1.6.1"]
+build-backend = "poetry.core.masonry.api"
