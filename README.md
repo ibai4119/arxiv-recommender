@@ -2,17 +2,53 @@
 
 Recomendador semántico de artículos de arXiv basado en embeddings de Sentence Transformers y búsqueda vectorial con FAISS.
 
-## Requisitos
+## Índice
 
-- Python 3.11
-- [Poetry](https://python-poetry.org/) 1.5+
-- Dataset `arxiv-metadata-oai-snapshot.json` (JSON lines) en `data/` (usa `make download` para bajarlo).
+1. [Descripción general](#1-descripcion-general)
+2. [Requisitos](#2-requisitos)
+3. [Instalación rápida](#3-instalacion-rapida)
+4. [Descargar el snapshot](#4-descargar-el-snapshot)
+5. [Generar embeddings e índice](#5-generar-embeddings-e-indice)
+6. [API y búsqueda](#6-api-y-busqueda)
+7. [Pruebas y formato](#7-pruebas-y-formato)
+8. [Docker](#8-docker)
+9. [Estructura del proyecto](#9-estructura-del-proyecto)
+10. [Próximos pasos](#10-proximos-pasos)
 
-## Descargar el snapshot automáticamente
+## 1. Descripción general
 
-`scripts/download_snapshot.py` descarga `arxiv-metadata-oai-snapshot.json` desde Kaggle y deja el JSON listo en `data/`. La conversión a CSV es opcional.
+1. El proyecto ingiere el snapshot oficial de metadatos de arXiv.
+2. Compone título y abstract para cada paper y genera embeddings con `sentence-transformers/all-MiniLM-L6-v2`.
+3. Construye un índice FAISS + archivos auxiliares (`metadata.parquet`, `embeddings.npy`, `index.faiss`) dentro de `artifacts/`.
+4. Expone un API FastAPI que realiza búsqueda semántica y recomendaciones por item.
 
-1. Configura tus credenciales de Kaggle en un archivo `.env` (o exporta las variables manualmente):
+## 2. Requisitos
+
+1. Python 3.11.
+2. [Poetry](https://python-poetry.org/) 1.5 o superior.
+3. Dataset `data/arxiv-metadata-oai-snapshot.json` (se obtiene con `make download`).
+
+## 3. Instalación rápida
+
+1. Instala dependencias con Poetry:
+
+   ```bash
+   poetry install
+   ```
+
+2. (Opcional) Habilita los hooks de pre-commit:
+
+   ```bash
+   poetry run pre-commit install
+   ```
+
+3. Recuerda que `poetry.toml` fuerza a crear el entorno virtual dentro del repo (`.venv/`), ideal para Docker/CI.
+
+## 4. Descargar el snapshot
+
+`scripts/download_snapshot.py` baja `arxiv-metadata-oai-snapshot.json` desde Kaggle y deja el JSON listo (sin comprimir) en `data/`.
+
+1. Crea un archivo `.env` con tus credenciales de Kaggle (o exporta las variables manualmente):
 
    ```bash
    cat <<'EOF' > .env
@@ -21,75 +57,83 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
    EOF
    ```
 
-2. Ejecuta:
+2. Ejecuta la descarga:
 
    ```bash
    make download
    ```
-   > El objetivo lee automáticamente las variables de `.env` antes de llamar al script.
 
-Opciones útiles:
+3. El objetivo lee automáticamente `.env`, detecta si Kaggle entrega ZIP o JSON directo y guarda el resultado en `data/`.
 
-```bash
-poetry run python scripts/download_snapshot.py --convert-csv    # además genera un CSV
-poetry run python scripts/download_snapshot.py --remove-json    # borra el JSON tras descargar
-poetry run python scripts/download_snapshot.py --limit 1000     # limita filas al convertir a CSV
-```
-
-## Configuración rápida
+### Opciones útiles
 
 ```bash
-poetry install
-poetry run pre-commit install  # opcional, para los hooks
+poetry run python scripts/download_snapshot.py --convert-csv    # genera CSV adicional
+poetry run python scripts/download_snapshot.py --remove-json    # borra el JSON tras convertir
+poetry run python scripts/download_snapshot.py --limit 1000     # limita filas durante la conversión
 ```
 
-> Nota: el archivo `poetry.toml` fuerza a Poetry a crear el entorno virtual dentro del proyecto (`.venv/`), facilitando su uso en Docker/CI.
+## 5. Generar embeddings e índice
 
-## Generar embeddings e índice
+1. Ejecuta:
 
-```bash
-make embed  # usa data/arxiv-metadata-oai-snapshot.json por defecto
-```
+   ```bash
+   make embed
+   ```
 
-El comando ejecuta `scripts/build_index.py`, que:
+2. El comando corre `scripts/build_index.py`, que:
+   1. Lee el JSON lineal original (puedes cambiar la ruta con `--data-path`).
+   2. Limpia los textos y concatena título + abstract.
+   3. Calcula embeddings con el modelo por defecto (configurable).
+   4. Persiste `artifacts/metadata.parquet`, `artifacts/embeddings.npy` y `artifacts/index.faiss`.
+3. Personaliza el proceso, por ejemplo:
 
-1. Lee el JSON lineal original (puedes cambiar la ruta con `--data-path`).
-2. Limpia y combina título + abstract.
-3. Calcula embeddings con `sentence-transformers/all-MiniLM-L6-v2`.
-4. Guarda `artifacts/metadata.parquet`, `artifacts/embeddings.npy` y `artifacts/index.faiss`.
+   ```bash
+   poetry run python scripts/build_index.py --limit 10000 --batch-size 32
+   ```
 
-### Parámetros opcionales
+## 6. API y búsqueda
 
-```bash
-poetry run python scripts/build_index.py --limit 10000 --batch-size 32
-```
+1. Levanta el servidor:
 
-## Ejecutar el API
+   ```bash
+   make serve
+   ```
 
-```bash
-make serve
-```
+2. Endpoints disponibles:
+   - `GET /search?q=texto&k=5`
+   - `GET /recommend?item_id=arXivID&k=5`
+3. El servidor usa `uvicorn` en modo recarga (`--reload`) por defecto para acelerar iteraciones locales.
 
-Endpoints principales:
+## 7. Pruebas y formato
 
-- `GET /search?q=texto&k=5`
-- `GET /recommend?item_id=arXivID&k=5`
+1. Ejecuta los tests:
 
-## Pruebas, formato y lint
+   ```bash
+   make test
+   ```
 
-```bash
-make test
-make fmt
-```
+2. Aplica formato (Black + isort):
 
-## Docker
+   ```bash
+   make fmt
+   ```
 
-```bash
-docker build -t arxiv-recommender .
-docker run -p 8000:8000 -v $(pwd)/artifacts:/app/artifacts arxiv-recommender
-```
+## 8. Docker
 
-## Estructura
+1. Construye la imagen:
+
+   ```bash
+   docker build -t arxiv-recommender .
+   ```
+
+2. Levanta el contenedor mapeando artefactos y puerto:
+
+   ```bash
+   docker run -p 8000:8000 -v $(pwd)/artifacts:/app/artifacts arxiv-recommender
+   ```
+
+## 9. Estructura del proyecto
 
 ```text
 ├── scripts/build_index.py
@@ -102,7 +146,7 @@ docker run -p 8000:8000 -v $(pwd)/artifacts:/app/artifacts arxiv-recommender
 └── Dockerfile
 ```
 
-## Próximos pasos
+## 10. Próximos pasos
 
-- Añadir lógica de actualización incremental del índice.
-- Automatizar pipelines (Airflow, Prefect, etc.).
+1. Añadir lógica de actualización incremental del índice.
+2. Automatizar pipelines de ingesta y refresco (Airflow, Prefect, etc.).

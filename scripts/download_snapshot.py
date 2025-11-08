@@ -115,12 +115,17 @@ def extract_json(archive_path: Path, json_path: Path, force: bool) -> Path:
     if tmp_path.exists():
         tmp_path.unlink()
 
-    print("Extracting JSON from archive...")
-    with zipfile.ZipFile(archive_path) as zf:
-        if TARGET_FILENAME not in zf.namelist():
-            raise RuntimeError(f"{TARGET_FILENAME} not found inside {archive_path}")
-        with zf.open(TARGET_FILENAME) as src, tmp_path.open("wb") as dst:
-            shutil.copyfileobj(src, dst, CHUNK_SIZE)
+    if zipfile.is_zipfile(archive_path):
+        print("Extracting JSON from archive...")
+        with zipfile.ZipFile(archive_path) as zf:
+            if TARGET_FILENAME not in zf.namelist():
+                raise RuntimeError(f"{TARGET_FILENAME} not found inside {archive_path}")
+            with zf.open(TARGET_FILENAME) as src, tmp_path.open("wb") as dst:
+                shutil.copyfileobj(src, dst, CHUNK_SIZE)
+    else:
+        print("Archive is already JSON, copying...")
+        shutil.copyfile(archive_path, tmp_path)
+
     tmp_path.replace(json_path)
     print(f"JSON ready at {json_path}")
     return json_path

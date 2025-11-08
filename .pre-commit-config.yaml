@@ -15,3 +15,10 @@ repos:
     hooks:
       - id: flake8
         language_version: python3
+  - repo: local
+    hooks:
+      - id: markdown-fenced-blank-lines
+        name: Ensure fenced code blocks have surrounding blank lines
+        entry: python3 scripts/lint_markdown.py
+        language: system
+        files: \.md$
