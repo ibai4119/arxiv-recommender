@@ -4,22 +4,22 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
 
 ## Índice
 
-1. [Descripción general](#1-descripcion-general)
+1. [Descripción general](#1-descripción-general)
 2. [Requisitos](#2-requisitos)
-3. [Instalación rápida](#3-instalacion-rapida)
+3. [Instalación rápida](#3-instalación-rápida)
 4. [Descargar el snapshot](#4-descargar-el-snapshot)
-5. [Generar embeddings e índice](#5-generar-embeddings-e-indice)
-6. [API y búsqueda](#6-api-y-busqueda)
+5. [Generar embeddings e índice](#5-generar-embeddings-e-índice)
+6. [API y búsqueda](#6-api-y-búsqueda)
 7. [Pruebas y formato](#7-pruebas-y-formato)
 8. [Docker](#8-docker)
 9. [Estructura del proyecto](#9-estructura-del-proyecto)
-10. [Próximos pasos](#10-proximos-pasos)
+10. [Próximos pasos](#10-próximos-pasos)
 
 ## 1. Descripción general
 
 1. El proyecto ingiere el snapshot oficial de metadatos de arXiv.
 2. Compone título y abstract para cada paper y genera embeddings con `sentence-transformers/all-MiniLM-L6-v2`.
-3. Construye un índice FAISS + archivos auxiliares (`metadata.parquet`, `embeddings.npy`, `index.faiss`) dentro de `artifacts/`.
+3. Construye un índice FAISS + archivos auxiliares (`metadata.parquet`, `metadata_full.parquet`, `embeddings.npy`, `index.faiss`) dentro de `artifacts/`.
 4. Expone un API FastAPI que realiza búsqueda semántica y recomendaciones por item.
 
 ## 2. Requisitos
@@ -46,7 +46,7 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
 
 ## 4. Descargar el snapshot
 
-`scripts/download_snapshot.py` baja `arxiv-metadata-oai-snapshot.json` desde Kaggle y deja el JSON listo (sin comprimir) en `data/`.
+`arxiv_rec.cli.download_snapshot` baja `arxiv-metadata-oai-snapshot.json` desde Kaggle y genera `arxiv-metadata-oai-snapshot.parquet` en `data/`.
 
 1. Crea un archivo `.env` con tus credenciales de Kaggle (o exporta las variables manualmente):
 
@@ -68,9 +68,8 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
 ### Opciones útiles
 
 ```bash
-poetry run python scripts/download_snapshot.py --convert-csv    # genera CSV adicional
-poetry run python scripts/download_snapshot.py --remove-json    # borra el JSON tras convertir
-poetry run python scripts/download_snapshot.py --limit 1000     # limita filas durante la conversión
+poetry run python -m arxiv_rec.cli.download_snapshot --keep-json    # conserva el JSON tras convertir
+poetry run python -m arxiv_rec.cli.download_snapshot --force        # fuerza redescarga y reconversión
 ```
 
 ## 5. Generar embeddings e índice
@@ -81,16 +80,22 @@ poetry run python scripts/download_snapshot.py --limit 1000     # limita filas d
    make embed
    ```
 
-2. El comando corre `scripts/build_index.py`, que:
-   1. Lee el JSON lineal original (puedes cambiar la ruta con `--data-path`).
+2. El comando corre `arxiv_rec.cli.build_index`, que:
+   1. Lee el Parquet generado (puedes cambiar la ruta con `--data-path`).
    2. Limpia los textos y concatena título + abstract.
    3. Calcula embeddings con el modelo por defecto (configurable).
-   4. Persiste `artifacts/metadata.parquet`, `artifacts/embeddings.npy` y `artifacts/index.faiss`.
+   4. Persiste `artifacts/metadata.parquet`, `artifacts/metadata_full.parquet`, `artifacts/embeddings.npy` y `artifacts/index.faiss`.
 3. Personaliza el proceso, por ejemplo:
 
    ```bash
-   poetry run python scripts/build_index.py --limit 10000 --batch-size 32
+   poetry run python -m arxiv_rec.cli.build_index --limit 10000 --batch-size 32
    ```
+
+### Notas de rendimiento
+
+- El mayor coste suele ser la generación de embeddings, no la lectura.
+- `metadata_full.parquet` sirve para mostrar detalles completos tras seleccionar un paper.
+- Para consultas rápidas de metadatos sin cargar Parquet, puedes usar DuckDB como capa de lectura.
 
 ## 6. API y búsqueda
 
@@ -136,7 +141,7 @@ poetry run python scripts/download_snapshot.py --limit 1000     # limita filas d
 ## 9. Estructura del proyecto
 
 ```text
-├── scripts/build_index.py
+├── src/arxiv_rec/cli/{build_index,download_snapshot}.py
 ├── src/arxiv_rec
 │   ├── data/{ingest,clean}.py
 │   ├── models/{embed,index}.py

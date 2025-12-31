@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 import re
+import sys
 import unicodedata
-
+from pathlib import Path
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 def slugify(text: str) -> str:
-    normalized = unicodedata.normalize("NFKD", text)
-    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
-    ascii_text = ascii_text.lower()
-    ascii_text = ascii_text.strip()
-    ascii_text = re.sub(r"[#]+$", "", ascii_text).strip()
-    ascii_text = re.sub(r"[^a-z0-9]+", "-", ascii_text).strip("-")
-    return ascii_text
+    slug = unicodedata.normalize("NFKC", text)
+    slug = slug.lower().strip()
+    slug = re.sub(r"[#]+$", "", slug).strip()
+    # Remove characters that GitHub would drop from heading IDs
+    slug = re.sub(r"[^\w\s-]", "", slug, flags=re.UNICODE)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-")
 
 
 def collect_heading_ids(lines: list[str]) -> set[str]:
@@ -36,7 +36,7 @@ def check_link_fragments(path: Path, lines: list[str], heading_ids: set[str]) ->
     errors: list[str] = []
     for idx, line in enumerate(lines, start=1):
         for _, target in LINK_RE.findall(line):
-            if target.startswith("http://") or target.startswith("https://") or target.startswith("mailto:"):
+            if target.startswith(("http://", "https://", "mailto:")):
                 continue
             if "#" not in target:
                 continue
@@ -46,9 +46,7 @@ def check_link_fragments(path: Path, lines: list[str], heading_ids: set[str]) ->
             if not fragment:
                 continue
             if fragment not in heading_ids:
-                errors.append(
-                    f"{path}:{idx}: unknown link fragment '#{fragment}'"
-                )
+                errors.append(f"{path}:{idx}: unknown link fragment '#{fragment}'")
     return errors
 
 
@@ -60,9 +58,7 @@ def check_fenced_blocks(path: Path, lines: list[str]) -> list[str]:
         if line.startswith("```"):
             fence_start = idx
             if fence_start > 0 and lines[fence_start - 1].strip():
-                errors.append(
-                    f"{path}:{fence_start + 1}: missing blank line before fenced block"
-                )
+                errors.append(f"{path}:{fence_start + 1}: missing blank line before fenced block")
 
             idx += 1
             while idx < len(lines) and not lines[idx].lstrip().startswith("```"):
@@ -74,9 +70,7 @@ def check_fenced_blocks(path: Path, lines: list[str]) -> list[str]:
             fence_end = idx
             next_line_index = fence_end + 1
             if next_line_index < len(lines) and lines[next_line_index].strip():
-                errors.append(
-                    f"{path}:{fence_end + 1}: missing blank line after fenced block"
-                )
+                errors.append(f"{path}:{fence_end + 1}: missing blank line after fenced block")
         idx += 1
     return errors
 
