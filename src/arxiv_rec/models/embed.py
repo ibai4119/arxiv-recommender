@@ -34,3 +34,6 @@ class EmbeddingService:
 
     def encode_query(self, text: str) -> np.ndarray:
         return self.encode_texts([text], batch_size=1, show_progress_bar=False)[0]
+
+    def embedding_dimension(self) -> int:
+        return int(self.model.get_sentence_embedding_dimension())

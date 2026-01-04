@@ -1,5 +1,10 @@
 .PHONY: install download embed embed-fast serve test test-all lint fmt help
 SHELL := /bin/bash
+SHARD_COUNT ?= 25
+EMBED_BATCH_SIZE ?= 32
+EMBED_DEVICE ?= mps
+EMBED_CHUNK_SIZE ?= 20000
+PROGRESS_EVERY ?= 1
 
 install:
 	poetry install
@@ -11,10 +16,28 @@ download:
 	poetry run python -m arxiv_rec.cli.download_snapshot
 
 embed:
-	poetry run python -m arxiv_rec.cli.build_index --batch-size 256 --device mps
+	@for shard in $$(seq 0 $$(( $(SHARD_COUNT) - 1 ))); do \
+		shard_label=shard_$$(printf "%03d" $$shard)_of_$$(printf "%03d" $(SHARD_COUNT)); \
+		if [ -f artifacts/$$shard_label/.complete ]; then \
+			echo "==> Skipping shard $$shard/$(SHARD_COUNT) (already complete)"; \
+			continue; \
+		fi; \
+		echo "==> Embedding shard $$shard/$(SHARD_COUNT)"; \
+		poetry run python -m arxiv_rec.cli.build_index \
+			--batch-size $(EMBED_BATCH_SIZE) \
+			--device $(EMBED_DEVICE) \
+			--embed-chunk-size $(EMBED_CHUNK_SIZE) \
+			--progress-every $(PROGRESS_EVERY) \
+			--shard-index $$shard \
+			--shard-count $(SHARD_COUNT); \
+	done
 
 embed-fast:
-	poetry run python -m arxiv_rec.cli.build_index --limit 1000 --device mps
+	poetry run python -m arxiv_rec.cli.build_index \
+		--limit 1000 \
+		--device $(EMBED_DEVICE) \
+		--embed-chunk-size $(EMBED_CHUNK_SIZE) \
+		--progress-every $(PROGRESS_EVERY)
 
 serve:
 	poetry run uvicorn arxiv_rec.api.server:app --reload --host 0.0.0.0 --port 8000

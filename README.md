@@ -91,10 +91,28 @@ poetry run python -m arxiv_rec.cli.download_snapshot --force        # fuerza red
    poetry run python -m arxiv_rec.cli.build_index --limit 10000 --batch-size 32
    ```
 
+   Para shards:
+
+   ```bash
+   poetry run python -m arxiv_rec.cli.build_index --shard-index 0 --shard-count 4
+   ```
+
+   Los shards guardan artefactos en `artifacts/shard_XXX_of_YYY/` y crean un marcador `.complete` al terminar.
+
 ### Notas de rendimiento
 
 - El mayor coste suele ser la generación de embeddings, no la lectura.
+- Si quieres guardar embeddings incrementalmente, ajusta `--embed-chunk-size` (por defecto 10000).
+- Puedes ajustar la frecuencia de updates con `--progress-every`.
 - `metadata_full.parquet` sirve para mostrar detalles completos tras seleccionar un paper.
+
+Variables de `make` (con defaults, pero sobreescribibles):
+
+- `SHARD_COUNT`: numero total de shards; 1 = sin shard.
+- `EMBED_BATCH_SIZE`: tamaño de batch para embeddings.
+- `EMBED_DEVICE`: dispositivo (`mps`, `cpu`, `cuda`).
+- `EMBED_CHUNK_SIZE`: tamaño de chunk para escritura incremental.
+- `PROGRESS_EVERY`: cada cuantos batches se actualiza la descripcion.
 - Para consultas rápidas de metadatos sin cargar Parquet, puedes usar DuckDB como capa de lectura.
 
 ## 6. API y búsqueda

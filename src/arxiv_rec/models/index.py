@@ -52,7 +52,7 @@ class VectorIndex:
 
     @staticmethod
     def _normalize(array: np.ndarray) -> np.ndarray:
-        vectors = np.asarray(array).astype("float32")
+        vectors = np.asarray(array, dtype="float32")
         if vectors.ndim == 1:
             vectors = np.expand_dims(vectors, axis=0)
         faiss.normalize_L2(vectors)
