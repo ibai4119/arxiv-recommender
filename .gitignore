@@ -36,6 +36,9 @@ ENV/
 # Pytest
 .pytest_cache/
 
+# Ruff
+.ruff_cache/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
