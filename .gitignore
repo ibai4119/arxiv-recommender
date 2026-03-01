@@ -25,13 +25,12 @@ var/
 
 # Virtual environments
 .env
-.venv
+.venv/
+.uv-cache/
 env/
 venv/
 ENV/
 
-# Poetry
-poetry.lock
 .cache/
 
 # Pytest

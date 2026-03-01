@@ -7,13 +7,13 @@ EMBED_CHUNK_SIZE ?= 20000
 PROGRESS_EVERY ?= 1
 
 install:
-	poetry install
+	uv sync --dev
 
 download:
 	@set -a; \
 	if [ -f .env ]; then source .env; fi; \
 	set +a; \
-	poetry run python -m arxiv_rec.cli.download_snapshot
+	uv run python -m arxiv_rec.cli.download_snapshot
 
 embed:
 	@for shard in $$(seq 0 $$(( $(SHARD_COUNT) - 1 ))); do \
@@ -23,7 +23,7 @@ embed:
 			continue; \
 		fi; \
 		echo "==> Embedding shard $$shard/$(SHARD_COUNT)"; \
-		poetry run python -m arxiv_rec.cli.build_index \
+		uv run python -m arxiv_rec.cli.build_index \
 			--batch-size $(EMBED_BATCH_SIZE) \
 			--device $(EMBED_DEVICE) \
 			--embed-chunk-size $(EMBED_CHUNK_SIZE) \
@@ -33,34 +33,34 @@ embed:
 	done
 
 embed-fast:
-	poetry run python -m arxiv_rec.cli.build_index \
+	uv run python -m arxiv_rec.cli.build_index \
 		--limit 1000 \
 		--device $(EMBED_DEVICE) \
 		--embed-chunk-size $(EMBED_CHUNK_SIZE) \
 		--progress-every $(PROGRESS_EVERY)
 
 serve:
-	poetry run uvicorn arxiv_rec.api.server:app --reload --host 0.0.0.0 --port 8000
+	uv run uvicorn arxiv_rec.api.server:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	poetry run pytest
+	uv run pytest
 
 test-all:
-	poetry run pytest
-	poetry run ruff check src scripts tests
-	poetry run ruff format --check src scripts tests
+	uv run pytest
+	uv run ruff check src scripts tests
+	uv run ruff format --check src scripts tests
 
 lint:
-	poetry run ruff check src scripts tests
+	uv run ruff check src scripts tests
 
 fmt:
-	poetry run ruff check --fix src scripts tests
-	poetry run ruff format src scripts tests
+	uv run ruff check --fix src scripts tests
+	uv run ruff format src scripts tests
 
 help:
 	@printf "Available targets:\n"
 	@printf "\nGeneral:\n"
-	@printf "  install    Install dependencies with Poetry.\n"
+	@printf "  install    Install dependencies with uv.\n"
 	@printf "  download   Download snapshot and build Parquet artifacts.\n"
 	@printf "  embed      Build embeddings + FAISS index.\n"
 	@printf "  embed-fast Quick embed run with limit=1000 and device=mps.\n"

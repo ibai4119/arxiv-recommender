@@ -1,36 +1,33 @@
-[tool.poetry]
+[project]
 name = "arxiv-recommender"
 version = "0.1.0"
 description = "Scientific article recommender powered by arXiv metadata."
-authors = ["Ibai"]
+authors = [{ name = "Ibai" }]
 readme = "README.md"
-packages = [{ include = "arxiv_rec", from = "src" }]
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "faiss-cpu",
+    "fastapi",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "requests",
+    "rich",
+    "scikit-learn",
+    "sentence-transformers",
+    "uvicorn",
+]
 
-[tool.poetry.scripts]
+[project.scripts]
 arxiv-download = "arxiv_rec.cli.download_snapshot:main"
 arxiv-embed = "arxiv_rec.cli.build_index:main"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-pandas = "*"
-numpy = "*"
-sentence-transformers = "*"
-faiss-cpu = "*"
-fastapi = "*"
-uvicorn = "*"
-scikit-learn = "*"
-pyarrow = "*"
-requests = "*"
-rich = "*"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-ruff = "*"
-pre-commit = "*"
-
-[tool.black]
-line-length = 100
-target-version = ["py311"]
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "pytest",
+    "ruff",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,6 +40,12 @@ line-length = 100
 select = ["E", "F", "I"]
 ignore = ["E203"]
 
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [build-system]
-requires = ["poetry-core>=1.6.1"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"

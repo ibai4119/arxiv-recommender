@@ -24,25 +24,25 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
 
 ## 2. Requisitos
 
-1. Python 3.11.
-2. [Poetry](https://python-poetry.org/) 1.5 o superior.
-3. Dataset `data/arxiv-metadata-oai-snapshot.json` (se obtiene con `make download`).
+1. Python 3.14.
+2. [`uv`](https://docs.astral.sh/uv/) instalado.
+3. Dataset `data/arxiv-metadata-oai-snapshot.parquet` (se obtiene con `make download`).
 
 ## 3. Instalación rápida
 
-1. Instala dependencias con Poetry:
+1. Instala dependencias con `uv`:
 
    ```bash
-   poetry install
+   uv sync --dev
    ```
 
 2. (Opcional) Habilita los hooks de pre-commit:
 
    ```bash
-   poetry run pre-commit install
+   uv run pre-commit install
    ```
 
-3. Recuerda que `poetry.toml` fuerza a crear el entorno virtual dentro del repo (`.venv/`), ideal para Docker/CI.
+3. `uv` gestionará el entorno y el lockfile del proyecto (`uv.lock`) desde la raíz del repo.
 
 ## 4. Descargar el snapshot
 
@@ -68,8 +68,8 @@ Recomendador semántico de artículos de arXiv basado en embeddings de Sentence 
 ### Opciones útiles
 
 ```bash
-poetry run python -m arxiv_rec.cli.download_snapshot --keep-json    # conserva el JSON tras convertir
-poetry run python -m arxiv_rec.cli.download_snapshot --force        # fuerza redescarga y reconversión
+uv run python -m arxiv_rec.cli.download_snapshot --keep-json    # conserva el JSON tras convertir
+uv run python -m arxiv_rec.cli.download_snapshot --force        # fuerza redescarga y reconversión
 ```
 
 ## 5. Generar embeddings e índice
@@ -88,13 +88,13 @@ poetry run python -m arxiv_rec.cli.download_snapshot --force        # fuerza red
 3. Personaliza el proceso, por ejemplo:
 
    ```bash
-   poetry run python -m arxiv_rec.cli.build_index --limit 10000 --batch-size 32
+   uv run python -m arxiv_rec.cli.build_index --limit 10000 --batch-size 32
    ```
 
    Para shards:
 
    ```bash
-   poetry run python -m arxiv_rec.cli.build_index --shard-index 0 --shard-count 4
+   uv run python -m arxiv_rec.cli.build_index --shard-index 0 --shard-count 4
    ```
 
    Los shards guardan artefactos en `artifacts/shard_XXX_of_YYY/` y crean un marcador `.complete` al terminar.
@@ -136,9 +136,10 @@ Variables de `make` (con defaults, pero sobreescribibles):
    make test
    ```
 
-2. Aplica formato (Black + isort):
+2. Ejecuta lint y formato con Ruff:
 
    ```bash
+   make lint
    make fmt
    ```
 
@@ -163,6 +164,7 @@ Variables de `make` (con defaults, pero sobreescribibles):
 ├── src/arxiv_rec
 │   ├── data/{ingest,clean}.py
 │   ├── models/{embed,index}.py
+│   ├── services/recommender.py
 │   └── api/server.py
 ├── artifacts/
 ├── tests/
